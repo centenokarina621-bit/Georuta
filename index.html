@@ -1,0 +1,1471 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eco Ruta Granada v10</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#8B1A2B">
+    <link rel="icon" type="image/png" href="icon-192.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Eco Ruta">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap');
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+            background: #f0f2f5;
+            width: 100%;
+            overflow: hidden;
+            color: #1a1a2e;
+        }
+
+        #sidebar {
+            width: min(380px, 34vw);
+            min-width: 320px;
+            max-width: 420px;
+            background: #fff;
+            padding: clamp(16px, 2vw, 24px);
+            overflow-y: auto;
+            border-right: 1px solid #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+            height: 100vh;
+            z-index: 1010;
+            transition: transform 0.3s cubic-bezier(.4, 0, .2, 1), box-shadow 0.3s ease;
+            overscroll-behavior: contain;
+        }
+
+        #map {
+            flex: 1;
+            height: 100vh;
+            min-width: 0;
+            position: relative;
+            z-index: 1;
+        }
+
+        .logo-container {
+            text-align: center;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #f0e6e8;
+        }
+
+        .logo-container img {
+            max-width: min(200px, 70%);
+            height: auto;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .search-row input {
+            flex: 1;
+            min-width: 0;
+        }
+
+        input {
+            width: 100%;
+            min-width: 0;
+            padding: 11px 14px;
+            border: 2px solid #e8e8e8;
+            border-radius: 10px;
+            font-size: 14px;
+            font-family: inherit;
+            background: #fafafa;
+            transition: border-color 0.2s, background 0.2s;
+        }
+
+        input::placeholder {
+            color: #aaa;
+        }
+
+        input:focus {
+            border-color: #8B1A2B;
+            background: #fff;
+            outline: none;
+        }
+
+        .btn {
+            padding: 12px 14px;
+            min-height: 46px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 700;
+            font-family: inherit;
+            font-size: 14px;
+            transition: transform 0.12s, background 0.2s, box-shadow 0.2s;
+            width: 100%;
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+            letter-spacing: 0.2px;
+        }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.97);
+        }
+
+        .btn-location {
+            background: linear-gradient(135deg, #1976d2, #1565c0);
+            color: #fff;
+            font-weight: 800;
+            box-shadow: 0 4px 12px rgba(25, 118, 210, 0.25);
+        }
+
+        .btn-location:hover {
+            background: #1565c0;
+        }
+
+        .btn-search {
+            background: #8B1A2B;
+            color: #fff;
+            white-space: nowrap;
+            width: auto;
+            padding: 12px 16px;
+        }
+
+        .btn-search:hover:not(:disabled) {
+            background: #6B1521;
+        }
+
+        .btn-primary {
+            background: #333;
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: #1a1a1a;
+        }
+
+        .btn-warning {
+            background: #8B1A2B;
+            color: #fff;
+        }
+
+        .btn-warning:hover:not(:disabled) {
+            background: #6B1521;
+        }
+
+        .btn-danger {
+            background: #555;
+            color: #fff;
+        }
+
+        .btn:disabled {
+            background: #bdbdbd;
+            cursor: not-allowed;
+        }
+
+        .status {
+            padding: 10px 12px;
+            border-radius: 9px;
+            font-size: 13px;
+            text-align: center;
+            background: #f5f5f7;
+            color: #444;
+            font-weight: 600;
+            line-height: 1.4;
+        }
+
+        .status.error {
+            background: #fff0f0;
+            color: #b71c1c;
+            border-left: 3px solid #ef5350;
+        }
+
+        .status.success {
+            background: #f0faf2;
+            color: #1b5e20;
+            border-left: 3px solid #43a047;
+        }
+
+        .status.info {
+            background: #e8f4fd;
+            color: #0d47a1;
+            border-left: 3px solid #42a5f5;
+        }
+
+        .options-list {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+
+        .option-item {
+            padding: 8px;
+            cursor: pointer;
+            border-radius: 6px;
+            font-size: 13px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .option-item:last-child {
+            border-bottom: none;
+        }
+
+        .option-item:hover,
+        .option-item.active {
+            background: #f0e6e8;
+            font-weight: 600;
+        }
+
+        .destinos-list {
+            list-style: none;
+            max-height: 180px;
+            overflow-y: auto;
+        }
+
+        .destinos-list li {
+            padding: 10px;
+            background: #fafafa;
+            margin-bottom: 6px;
+            border-radius: 6px;
+            border-left: 4px solid #8B1A2B;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 14px;
+        }
+
+        .destinos-list li .numero {
+            font-weight: bold;
+            color: #8B1A2B;
+            margin-right: 6px;
+        }
+
+        .delete-btn {
+            background: #ef5350;
+            color: #fff;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            min-height: 36px;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+
+        .modal-overlay.visible {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 25px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .modal h3 {
+            color: #8B1A2B;
+            margin-bottom: 10px;
+        }
+
+        .modal p {
+            font-size: 14px;
+            margin-bottom: 15px;
+            color: #555;
+        }
+
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-btns button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-accept {
+            background: #8B1A2B;
+            color: #fff;
+        }
+
+        .btn-cancel {
+            background: #757575;
+            color: #fff;
+        }
+
+        .badge-granada {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(255, 255, 255, 0.96);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            color: #8B1A2B;
+            border: 2px solid #8B1A2B;
+            max-width: calc(100% - 24px);
+        }
+
+        .tabs-rutas {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-top: 10px;
+        }
+
+        .tab-card {
+            background: #f9f9f9;
+            padding: 8px 4px;
+            border-radius: 8px;
+            text-align: center;
+            border: 2px solid #e0e0e0;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 80px;
+        }
+
+        .tab-card.active {
+            border-color: #8B1A2B;
+            background: #f0e6e8;
+        }
+
+        .tab-card .icon {
+            font-size: 1.6rem;
+        }
+
+        .ruta-resultado {
+            display: none;
+            margin-top: 10px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .ruta-resultado.visible {
+            display: block;
+        }
+
+        .ruta-titulo {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .orden-visita {
+            list-style: none;
+            margin-bottom: 12px;
+        }
+
+        .orden-visita li {
+            padding: 8px 10px;
+            margin-bottom: 4px;
+            background: linear-gradient(135deg, #8B1A2B 0%, #6B1521 100%);
+            color: white;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .orden-visita li.inicio {
+            background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%);
+        }
+
+        .orden-visita li .numero {
+            width: 22px;
+            height: 22px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.8rem;
+            flex-shrink: 0;
+        }
+
+        .orden-visita li div {
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+
+        .orden-visita li strong,
+        .orden-visita li small {
+            overflow-wrap: anywhere;
+        }
+
+        /* BOTONES FLOTANTES RESPONSIVE */
+        :root {
+            --teclado-offset: 0px;
+        }
+
+        #btnToggleView,
+        #btnOpenMap {
+            display: none;
+            position: fixed;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 2000;
+            color: white;
+            padding: 14px 22px;
+            border-radius: 999px;
+            font-weight: 700;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 48px;
+            max-width: calc(100vw - 32px);
+            text-align: center;
+            transition: bottom 0.15s ease;
+        }
+
+        #btnToggleView {
+            bottom: calc(18px + env(safe-area-inset-bottom) + var(--teclado-offset));
+            background: linear-gradient(135deg, #8B1A2B, #6B1521);
+            box-shadow: 0 6px 20px rgba(139, 26, 43, 0.4);
+        }
+
+        #btnOpenMap {
+            bottom: calc(74px + env(safe-area-inset-bottom) + var(--teclado-offset));
+            background: linear-gradient(135deg, #1976d2, #1565c0);
+            box-shadow: 0 6px 20px rgba(25, 118, 210, 0.4);
+        }
+
+        .leaflet-control-zoom a {
+            width: 38px;
+            height: 38px;
+            line-height: 38px;
+        }
+
+        @media (max-width: 1024px) {
+            #sidebar {
+                width: min(360px, 42vw);
+                min-width: 300px;
+            }
+
+            .search-row {
+                flex-wrap: wrap;
+            }
+
+            .btn-search {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 768px) {
+            body {
+                position: relative;
+            }
+
+            #sidebar {
+                position: absolute;
+                inset: 0 auto 0 0;
+                width: min(100%, 100vw);
+                min-width: 100%;
+                max-width: 100%;
+                height: 100dvh;
+                border-right: none;
+                box-shadow: 0 0 0 rgba(0, 0, 0, 0);
+                padding: 16px 16px 96px;
+            }
+
+            #map {
+                width: 100vw;
+                height: 100dvh;
+                position: absolute;
+                top: 0;
+                left: 0;
+            }
+
+            .search-row {
+                flex-direction: column;
+            }
+
+            .tabs-rutas {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+            }
+
+            .destinos-list li {
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .badge-granada {
+                top: 12px;
+                left: 12px;
+                right: auto;
+                font-size: 11px;
+            }
+
+            body.ver-mapa #sidebar {
+                transform: translateX(-100%);
+                box-shadow: none;
+            }
+
+            body.ver-mapa #btnToggleView {
+                display: flex;
+            }
+
+            body:not(.ver-mapa) #btnOpenMap {
+                display: flex;
+            }
+
+            body:not(.ver-mapa) #btnToggleView {
+                display: none;
+            }
+
+            .leaflet-top.leaflet-right {
+                top: 60px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #sidebar {
+                padding: 14px 14px 104px;
+                gap: 12px;
+            }
+
+            .logo-container h2 {
+                font-size: 1.2rem !important;
+            }
+
+            .tabs-rutas {
+                gap: 8px;
+            }
+
+            .tab-card {
+                padding: 12px 6px;
+            }
+
+            .tab-card .icon {
+                font-size: 1.4rem;
+            }
+
+            .modal {
+                width: calc(100% - 24px);
+                padding: 20px;
+            }
+
+            .modal-btns {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="sidebar">
+        <div class="logo-container">
+            <img src="logo.jpeg" alt="Eco Ruta Granada" onerror="this.style.display='none'">
+            <h2 style="color: #8B1A2B; font-size: 1.4rem;">Eco Ruta Granada</h2>
+        </div>
+
+        <button class="btn btn-location" onclick="obtenerUbicacionActual(true)">
+            📍 MI UBICACIÓN ACTUAL
+        </button>
+
+        <div class="search-box">
+            <div class="search-row">
+                <input type="text" id="inputLugar" placeholder="Lugar, comarca, isleta o coordenadas (lat, lon)">
+                <button type="button" id="btnBuscar" class="btn btn-search" onclick="buscarLugar()">🔍 Buscar</button>
+            </div>
+        </div>
+
+        <div id="statusMsg" class="status">💡 Busca por nombre, comarca, isleta o ingresa coordenadas (lat, lon). También puedes tocar el mapa 🗺️</div>
+
+        <button id="btnAgregar" class="btn btn-primary" onclick="agregarDestino()" disabled>✅ Agregar Destino</button>
+
+        <h3 style="font-size:16px; color:#333;">📋 Destinos (<span id="contador">0</span>)</h3>
+        <ul id="listaDestinos" class="destinos-list"></ul>
+
+        <button id="btnOptimizar" class="btn btn-warning" onclick="optimizarYMostrar()" disabled>
+            🚀 CALCULAR ALTERNATIVAS DE RUTA
+        </button>
+
+        <div class="ruta-resultado" id="rutaResultado">
+            <div class="ruta-titulo">Opciones de viaje disponibles:</div>
+
+            <div class="tabs-rutas" style="grid-template-columns:repeat(4,1fr);">
+                <div class="tab-card" id="tab-foot" onclick="seleccionarVistaRuta('foot')">
+                    <div class="icon">🚶</div>
+                </div>
+                <div class="tab-card" id="tab-bike" onclick="seleccionarVistaRuta('bike')">
+                    <div class="icon">🚲</div>
+                </div>
+                <div class="tab-card" id="tab-moto" onclick="seleccionarVistaRuta('moto')">
+                    <div class="icon">🏍️</div>
+                </div>
+                <div class="tab-card" id="tab-car" onclick="seleccionarVistaRuta('car')">
+                    <div class="icon">🚗</div>
+                </div>
+            </div>
+
+            <div class="ruta-titulo" style="margin-top:15px;">📍 Orden de visita sugerido:</div>
+            <ol class="orden-visita" id="ordenVisita"></ol>
+        </div>
+
+        <button class="btn btn-danger" onclick="limpiarTodo()">🗑️ Limpiar Todo</button>
+    </div>
+
+    <div id="map">
+        <div class="badge-granada">📍 Eco Ruta Granada</div>
+    </div>
+
+    <button id="btnOpenMap" type="button" onclick="mostrarMapaMovil()">🗺️ Ver mapa</button>
+    <button id="btnToggleView" type="button" onclick="alternarVistaMovil()">📋 Ver Lista de Destinos</button>
+
+    <div id="modalSugerencia" class="modal-overlay">
+        <div class="modal">
+            <h3>💡 Sucursal Más Cercana Detectada</h3>
+            <p id="textoSugerencia"></p>
+            <div class="modal-btns">
+                <button class="btn-cancel" onclick="rechazarSugerencia()">Ver otras opciones</button>
+                <button class="btn-accept" onclick="aceptarSugerencia()">✅ Usar esta sucursal</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Área amplia: Granada, isletas, zonas rurales, lago Cocibolca y carreteras
+        const GRANADA_BOUNDS = [[11.60, -86.20], [12.15, -85.50]];
+        let destinos = [];
+        let tempSeleccion = null;
+        let marcadoresMapa = [];
+        let rutaLinea = null;
+        let miUbicacion = null;
+        let municipioUbicacionVerificado = false; // evita repetir la verificación en cada watchPosition
+        let marcadoresPuntosMedios = [];
+
+        window.rutasCalculadas = { foot: null, bike: null, car: null };
+        let vistaActual = 'foot';
+
+        const map = L.map('map', {
+            center: [11.9280, -85.9580],
+            zoom: 13,
+            minZoom: 9,
+            maxZoom: 19,
+            maxBounds: GRANADA_BOUNDS,
+            maxBoundsViscosity: 0.8,
+            zoomControl: false
+        });
+
+        L.control.zoom({ position: 'topright' }).addTo(map);
+
+        // Clic en el mapa → colocar destino (útil para zonas rurales sin nombre en OSM)
+        map.on('click', function(e) {
+            const lat = e.latlng.lat.toFixed(6);
+            const lon = e.latlng.lng.toFixed(6);
+            const resultado = {
+                display_name: `Punto rural (${lat}, ${lon})`,
+                lat: parseFloat(lat),
+                lon: parseFloat(lon)
+            };
+            seleccionarUnico(resultado);
+            mostrarEstado('📌 Punto marcado en el mapa. Pulsa "Agregar Destino" para añadirlo.', 'info');
+        });
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            configurarVistaResponsive();
+            obtenerUbicacionActual();
+            setTimeout(() => { map.invalidateSize(); }, 250);
+        });
+
+        // Guardamos el ancho real para no confundir la apertura del teclado
+        // (que solo cambia el alto) con un cambio real de tamaño de pantalla.
+        let _anchoAnterior = window.innerWidth;
+
+        window.addEventListener('resize', () => {
+            const anchoActual = window.innerWidth;
+            if (anchoActual !== _anchoAnterior) {
+                _anchoAnterior = anchoActual;
+                configurarVistaResponsive();
+            }
+            map.invalidateSize();
+        });
+
+        // El teclado virtual (Android/iOS) reduce el "visual viewport" sin que
+        // cambie el ancho. Usamos esa API para levantar los botones flotantes
+        // por encima del teclado en vez de dejar que queden tapados o se corten.
+        function ajustarBotonesSobreTeclado() {
+            if (!window.visualViewport) return;
+            const vv = window.visualViewport;
+            const actualizar = () => {
+                const offsetInferior = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+                document.documentElement.style.setProperty('--teclado-offset', `${offsetInferior}px`);
+            };
+            vv.addEventListener('resize', actualizar);
+            vv.addEventListener('scroll', actualizar);
+            actualizar();
+        }
+        ajustarBotonesSobreTeclado();
+
+        function esMovil() {
+            return window.innerWidth <= 768;
+        }
+
+        function configurarVistaResponsive() {
+            if (!esMovil()) {
+                document.body.classList.remove('ver-mapa');
+            }
+        }
+
+        function mostrarMapaMovil() {
+            if (!esMovil()) return;
+            document.body.classList.add('ver-mapa');
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        // Función para cambiar de vista en teléfonos de forma fluida
+        function alternarVistaMovil() {
+            document.body.classList.remove('ver-mapa');
+            setTimeout(() => { map.invalidateSize(); }, 300);
+        }
+
+        let _watchId = null;
+
+        // Coordenadas del parque central de Granada, usadas como fallback cuando
+        // la ubicación real cae fuera del municipio o no se puede determinar.
+        const PARQUE_CENTRAL = { lat: 11.9280, lon: -85.9580 };
+
+        const crearIconoUsuario = () => L.divIcon({
+            className: 'custom-div-icon',
+            html: "<div style='background-color:#1976d2;width:20px;height:20px;border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(0,0,0,0.4);'></div>",
+            iconSize: [20, 20], iconAnchor: [10, 10]
+        });
+
+        function colocarMarcador(lat, lon, esFallback = false) {
+            if (window.miMarker) map.removeLayer(window.miMarker);
+            window.miMarker = L.marker([lat, lon], {
+                icon: crearIconoUsuario(),
+                draggable: esFallback
+            })
+                .addTo(map)
+                .bindPopup(esFallback
+                    ? '<b>📍 Inicio (Arrástrame para ajustar tu ubicación de partida)</b>'
+                    : '<b>📍 Estás aquí (Punto de partida)</b>');
+
+            if (esFallback) {
+                window.miMarker.openPopup();
+                window.miMarker.on('dragend', function (e) {
+                    const newPos = e.target.getLatLng();
+                    miUbicacion = { lat: newPos.lat, lon: newPos.lng };
+                    mostrarEstado('📍 Ubicación de partida ajustada manualmente.', 'info');
+                });
+            }
+        }
+
+        // Reubica al usuario en el parque central (modo manual/arrastrable) cuando
+        // la ubicación detectada no pertenece al municipio de Granada.
+        function moverAUbicacionFallback(mensaje) {
+            miUbicacion = { ...PARQUE_CENTRAL };
+            colocarMarcador(PARQUE_CENTRAL.lat, PARQUE_CENTRAL.lon, true);
+            map.setView([PARQUE_CENTRAL.lat, PARQUE_CENTRAL.lon], 15);
+            mostrarEstado(mensaje, 'info');
+            map.invalidateSize();
+        }
+
+        function obtenerUbicacionActual(forzarGPS = false) {
+            // Limpiar watcher anterior si existe
+            if (_watchId !== null) {
+                navigator.geolocation.clearWatch(_watchId);
+                _watchId = null;
+            }
+
+            const esArchivoLocal = window.location.protocol === 'file:';
+
+            if (!navigator.geolocation) {
+                mostrarEstado('❌ Tu navegador no soporta GPS.', 'error');
+                moverAUbicacionFallback('❌ Tu navegador no soporta GPS. Arrastra el punto azul.');
+                return;
+            }
+
+            if (esArchivoLocal && !forzarGPS) {
+                moverAUbicacionFallback('⚠️ Ejecutando desde archivo local (file://). El GPS automático podría estar bloqueado. Arrastra el punto azul o busca un lugar.');
+                return;
+            }
+
+            mostrarEstado('📡 Buscando tu ubicación GPS...', 'info');
+
+            let ubicacionYaEncontrada = false;
+
+            const exito = (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const precision = position.coords.accuracy;
+
+                miUbicacion = { lat, lon };
+                colocarMarcador(lat, lon, false);
+
+                // Rango ajustado al municipio de Granada (no al departamento completo).
+                // El rango anterior (11.55–12.40 / -86.25–-85.45) era tan amplio que
+                // aceptaba ubicaciones en Managua y Masaya como si fueran válidas.
+                const latOk = lat >= 11.68 && lat <= 12.05;
+                const lonOk = lon >= -86.05 && lon <= -85.70;
+
+                if (!latOk || !lonOk) {
+                    moverAUbicacionFallback('⚠️ Estás fuera del municipio de Granada. Mapa centrado en el parque central (arrastra el punto azul).');
+                } else {
+                    const precisionTxt = precision < 30 ? '🎯 Alta precisión' : precision < 100 ? '📍 Precisión media' : '📡 Precisión baja';
+                    mostrarEstado(`✅ Ubicación encontrada. ${precisionTxt}. Confirmando municipio...`, 'success');
+                    if (!ubicacionYaEncontrada) {
+                        map.setView([lat, lon], 17);
+                    }
+
+                    // Verificar una sola vez (no en cada watchPosition) que el punto esté
+                    // realmente dentro del municipio de Granada. El rectángulo de arriba es
+                    // solo un filtro rápido y grueso: municipios vecinos como Masaya o Tisma
+                    // caen dentro de ese rectángulo, así que esta confirmación por
+                    // geocodificación inversa es la que decide de verdad y, si el punto NO
+                    // pertenece a Granada, reubica al usuario en el parque central.
+                    if (!municipioUbicacionVerificado) {
+                        municipioUbicacionVerificado = true;
+                        verificarMunicipioUbicacion(lat, lon);
+                    } else {
+                        mostrarEstado(`✅ Ubicación encontrada. ${precisionTxt}. Agrega tus destinos.`, 'success');
+                    }
+                }
+
+                ubicacionYaEncontrada = true;
+                map.invalidateSize();
+            };
+
+            const fallo = (error) => {
+                console.warn("GPS error:", error.code, error.message);
+
+                if (esArchivoLocal) {
+                    falloFinal(error);
+                    return;
+                }
+
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        mostrarEstado('❌ Permiso de ubicación denegado por el navegador.', 'error');
+                        falloFinal(error);
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        if (!ubicacionYaEncontrada) {
+                            mostrarEstado('📡 GPS no disponible. Intentando por red/Wi-Fi...', 'info');
+                            setTimeout(() => {
+                                navigator.geolocation.getCurrentPosition(exito, falloFinal, {
+                                    enableHighAccuracy: false,
+                                    timeout: 10000,
+                                    maximumAge: 60000
+                                });
+                            }, 1000);
+                        }
+                        break;
+                    case error.TIMEOUT:
+                        if (!ubicacionYaEncontrada) {
+                            mostrarEstado('⏱️ Tiempo de GPS agotado. Reintentando con menor precisión...', 'info');
+                            setTimeout(() => {
+                                navigator.geolocation.getCurrentPosition(exito, falloFinal, {
+                                    enableHighAccuracy: false,
+                                    timeout: 12000,
+                                    maximumAge: 30000
+                                });
+                            }, 1000);
+                        }
+                        break;
+                }
+            };
+
+            const falloFinal = (error) => {
+                if (ubicacionYaEncontrada) return;
+                console.error("GPS fallo final:", error);
+
+                let msg = '❌ No se detectó tu ubicación. Usando ubicación manual (arrastra el punto azul).';
+                if (error && error.code === 1) {
+                    msg = '❌ Permiso denegado. Activa la ubicación o arrastra el punto azul.';
+                } else if (esArchivoLocal) {
+                    msg = '⚠️ Restricción de navegador detectada (file://). Usa la ubicación manual.';
+                }
+
+                moverAUbicacionFallback(msg);
+            };
+
+            // Intentar geolocation con timeout de 8 segundos
+            navigator.geolocation.getCurrentPosition(exito, fallo, {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 0
+            });
+
+            // watchPosition para actualización en tiempo real
+            _watchId = navigator.geolocation.watchPosition(exito, () => { }, {
+                enableHighAccuracy: true,
+                timeout: 20000,
+                maximumAge: 5000
+            });
+        }
+
+        // Municipios y ciudades vecinas que NO deben aparecer ni aceptarse como
+        // ubicación válida (incluye el departamento de Granada y los departamentos
+        // vecinos de Managua y Masaya, de donde suele "colarse" la señal GPS/red).
+        const MUNICIPIOS_EXCLUIDOS = [
+            'diriomo', 'diria', 'diriá', 'nandaime',
+            'managua', 'tipitapa', 'masaya', 'catarina', 'niquinohomo',
+            'nandasmo', 'masatepe', 'san juan de oriente', 'la concepcion', 'la concepción'
+        ];
+
+        function normalizarTexto(txt) {
+            return (txt || '').toString().toLowerCase()
+                .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+
+        // Revisa TODOS los valores del objeto address de Nominatim (sin importar
+        // bajo qué clave venga: county, state_district, municipality, etc.)
+        // para decidir si el resultado pertenece al municipio de Granada.
+        function perteneceAMunicipioGranada(address) {
+            if (!address) return true; // sin datos suficientes: no descartar, se valida por coordenadas
+            const valores = Object.values(address).map(normalizarTexto);
+
+            const esOtroMunicipio = valores.some(v =>
+                MUNICIPIOS_EXCLUIDOS.some(m => v.includes(normalizarTexto(m)))
+            );
+            if (esOtroMunicipio) return false;
+
+            const mencionaGranada = valores.some(v => v.includes('granada'));
+            return mencionaGranada; // si no menciona Granada en ningún nivel, se descarta
+        }
+
+        // Confirma con geocodificación inversa que la ubicación GPS esté dentro del
+        // municipio de Granada. Si el resultado indica claramente otro municipio,
+        // reubica al usuario en el parque central (modo manual). Si es una zona rural
+        // sin dirección detallada en OSM, se conserva la ubicación GPS tal cual.
+        async function verificarMunicipioUbicacion(lat, lon) {
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1&accept-language=es&zoom=10`;
+                const res = await fetch(url, { headers: { 'User-Agent': 'EcoRutaApp/1.0' } });
+                const data = await res.json();
+                if (data && data.address && !perteneceAMunicipioGranada(data.address)) {
+                    moverAUbicacionFallback('⚠️ Tu ubicación GPS está fuera del municipio de Granada. Mapa centrado en el parque central (arrastra el punto azul o busca un lugar).');
+                } else {
+                    mostrarEstado('✅ Ubicación confirmada dentro de Granada. Agrega tus destinos.', 'success');
+                }
+            } catch (e) {
+                console.warn('No se pudo verificar el municipio de la ubicación GPS:', e);
+                mostrarEstado('✅ Ubicación encontrada. Agrega tus destinos.', 'success');
+            }
+        }
+
+        async function buscarLugar() {
+            const query = document.getElementById('inputLugar').value.trim();
+            if (!query) return;
+
+            // Detectar si el usuario ingresó coordenadas directamente (ej: 11.9280, -85.9580)
+            const coordMatch = query.match(/^(-?\d+\.?\d*)\s*[,\s]\s*(-?\d+\.?\d*)$/);
+            if (coordMatch) {
+                const lat = parseFloat(coordMatch[1]);
+                const lon = parseFloat(coordMatch[2]);
+                if (lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+                    const resultado = { display_name: `Coordenadas: ${lat.toFixed(5)}, ${lon.toFixed(5)}`, lat, lon };
+                    seleccionarUnico(resultado);
+                    mostrarEstado('📌 Coordenadas colocadas en el mapa.', 'success');
+                    return;
+                }
+            }
+
+            mostrarEstado('🔍 Buscando en el municipio de Granada...', 'info');
+            document.getElementById('opcionesContainer')?.remove();
+            tempSeleccion = null;
+            document.getElementById('btnAgregar').disabled = true;
+
+            try {
+                // Búsqueda principal: viewbox amplio, sin bounded para zonas rurales y poco conocidas
+                // Viewbox cubre todo el departamento de Granada + Isletas + lago Cocibolca
+                const viewbox = '-86.20,12.15,-85.50,11.60';
+                const urlPrincipal = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&q=${encodeURIComponent(query + ', Granada, Nicaragua')}&viewbox=${viewbox}&bounded=0&limit=10&accept-language=es&countrycodes=ni`;
+                const res = await fetch(urlPrincipal, { headers: { 'User-Agent': 'EcoRutaApp/1.0' } });
+                const data = await res.json();
+
+                // Filtro 1: rango amplio de coordenadas (todo el departamento, solo para no perder
+                // resultados por el viewbox; el filtro real de municipio va después)
+                const dentroDeRango = data.filter(r => {
+                    const lat = parseFloat(r.lat);
+                    const lon = parseFloat(r.lon);
+                    return lat >= 11.55 && lat <= 12.20 && lon >= -86.25 && lon <= -85.45;
+                });
+
+                // Filtro 2 (el que realmente importa): excluir otros municipios del
+                // departamento (Diriomo, Diriá, Nandaime) usando los datos de dirección.
+                // IMPORTANTE: no hay respaldo hacia otros municipios. Si un lugar no está
+                // en el municipio de Granada, debe reportarse como no encontrado, nunca
+                // mostrar un resultado de Nandaime, Diriomo o Diriá.
+                const resultadosFinales = dentroDeRango.filter(r => perteneceAMunicipioGranada(r.address));
+
+                if (!resultadosFinales.length) {
+                    mostrarEstado('❌ No encontrado dentro del municipio de Granada. Intenta con coordenadas o un nombre más específico.', 'error');
+                    return;
+                }
+
+                if (miUbicacion && resultadosFinales.length > 1) {
+                    let masCercano = resultadosFinales[0];
+                    let distMin = Infinity;
+                    for (const r of resultadosFinales) {
+                        const dist = haversine(miUbicacion.lat, miUbicacion.lon, parseFloat(r.lat), parseFloat(r.lon));
+                        if (dist < distMin) { distMin = dist; masCercano = r; }
+                    }
+                    mostrarSugerencia(masCercano, resultadosFinales);
+                } else {
+                    procesarResultados(resultadosFinales);
+                }
+            } catch (e) { mostrarEstado('❌ Error de conexión al servidor.', 'error'); }
+        }
+
+        function mostrarSugerencia(masCercano, todos) {
+            const modal = document.getElementById('modalSugerencia');
+            const texto = document.getElementById('textoSugerencia');
+            texto.innerHTML = `Detectamos que el punto más cercano a ti es: <strong>${masCercano.display_name.split(',')[0]}</strong> en <em>${masCercano.display_name.split(',').slice(0, 2).join(', ')}</em>.`;
+            modal.classList.add('visible');
+            window.todosResultados = todos;
+            seleccionarUnico(masCercano);
+        }
+
+        function aceptarSugerencia() { document.getElementById('modalSugerencia').classList.remove('visible'); }
+
+        function rechazarSugerencia() {
+            document.getElementById('modalSugerencia').classList.remove('visible');
+            if (window.todosResultados) procesarResultados(window.todosResultados);
+        }
+
+        function procesarResultados(resultados) {
+            const container = document.createElement('div');
+            container.id = 'opcionesContainer';
+            container.className = 'options-list';
+            if (resultados.length === 1) { seleccionarUnico(resultados[0]); }
+            else {
+                resultados.forEach((r, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'option-item';
+                    div.textContent = `📍 ${r.display_name.split(',').slice(0, 2).join(',')}`;
+                    div.onclick = () => seleccionarOpcion(i, resultados);
+                    container.appendChild(div);
+                });
+                document.querySelector('.search-box').appendChild(container);
+                mostrarEstado(`✅ Selecciona una opción de la lista:`, 'normal');
+            }
+        }
+
+        function seleccionarOpcion(index, resultados) {
+            document.querySelectorAll('.option-item').forEach((el, i) => el.classList.toggle('active', i === index));
+            seleccionarUnico(resultados[index]);
+        }
+
+        function seleccionarUnico(resultado) {
+            tempSeleccion = {
+                nombre: resultado.display_name.split(',')[0],
+                lat: parseFloat(resultado.lat),
+                lon: parseFloat(resultado.lon)
+            };
+            map.setView([tempSeleccion.lat, tempSeleccion.lon], 17);
+            if (window.tempMarker) map.removeLayer(window.tempMarker);
+            window.tempMarker = L.marker([tempSeleccion.lat, tempSeleccion.lon]).addTo(map)
+                .bindPopup(`<b>${tempSeleccion.nombre}</b>`).openPopup();
+            document.getElementById('opcionesContainer')?.remove();
+            document.getElementById('btnAgregar').disabled = false;
+            mostrarEstado('✅ Destino listo para agregar.', 'success');
+
+            // Mover al mapa en móvil para que el usuario vea dónde cayó el marcador asignado
+            if (esMovil()) {
+                mostrarMapaMovil();
+            }
+        }
+
+        function agregarDestino() {
+            if (!tempSeleccion) return;
+            destinos.push({ ...tempSeleccion });
+            const marker = L.marker([tempSeleccion.lat, tempSeleccion.lon]).addTo(map)
+                .bindPopup(`<b>${destinos.length}. ${tempSeleccion.nombre}</b>`);
+            marcadoresMapa.push(marker);
+
+            if (window.tempMarker) { map.removeLayer(window.tempMarker); window.tempMarker = null; }
+
+            removerRutaGrafica();
+            renderLista();
+            document.getElementById('inputLugar').value = '';
+            tempSeleccion = null;
+            document.getElementById('btnAgregar').disabled = true;
+            mostrarEstado('➕ Añadido con éxito.', 'success');
+            if (destinos.length >= 1) document.getElementById('btnOptimizar').disabled = false;
+
+            // Al añadir el destino, regresar al formulario para que pueda seguir buscando más cosas
+            if (esMovil()) {
+                alternarVistaMovil();
+            }
+        }
+
+        function renderLista() {
+            const ul = document.getElementById('listaDestinos');
+            ul.innerHTML = '';
+            destinos.forEach((d, i) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span><span class="numero">${i + 1}</span>${d.nombre}</span> <button class="delete-btn" onclick="eliminarDestino(${i})">✕</button>`;
+                ul.appendChild(li);
+            });
+            document.getElementById('contador').textContent = destinos.length;
+            if (destinos.length < 1) document.getElementById('btnOptimizar').disabled = true;
+        }
+
+        function eliminarDestino(index) {
+            if (marcadoresMapa[index]) map.removeLayer(marcadoresMapa[index]);
+            destinos.splice(index, 1);
+            marcadoresMapa.splice(index, 1);
+            marcadoresMapa.forEach((m, i) => m.setPopupContent(`<b>${i + 1}. ${destinos[i].nombre}</b>`));
+            removerRutaGrafica();
+            renderLista();
+            mostrarEstado('🗑️ Destino eliminado.', 'info');
+        }
+
+        function removerRutaGrafica() {
+            document.getElementById('rutaResultado').classList.remove('visible');
+            if (rutaLinea) { map.removeLayer(rutaLinea); rutaLinea = null; }
+            marcadoresPuntosMedios.forEach(m => map.removeLayer(m));
+            marcadoresPuntosMedios = [];
+        }
+
+        // Decodifica Google Polyline encoded (precisión 6 que usa Valhalla)
+        function decodePoly6(str) {
+            let index = 0, lat = 0, lng = 0;
+            const coords = [];
+            while (index < str.length) {
+                let b, shift = 0, result = 0;
+                do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+                shift = 0; result = 0;
+                do { b = str.charCodeAt(index++) - 63; result |= (b & 0x1f) << shift; shift += 5; } while (b >= 0x20);
+                lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+                coords.push([lat / 1e6, lng / 1e6]);  // [lat, lon] para Leaflet
+            }
+            return coords;
+        }
+
+        async function pedirValhalla(costing, puntos) {
+            const body = {
+                locations: puntos.map(p => ({ lon: p.lon, lat: p.lat })),
+                costing,
+                costing_options: costing === 'pedestrian'
+                    ? { pedestrian: { use_roads: 0.1 } }
+                    : { bicycle: { use_roads: 0.2, bicycle_type: 'Cross' } },
+                directions_options: { language: 'es' }
+                // sin shape_format — dejamos el encoded por defecto (que es lo que realmente devuelve)
+            };
+            const res = await fetch('https://valhalla1.openstreetmap.de/route', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) throw new Error(`Valhalla ${res.status}`);
+            const data = await res.json();
+            if (!data.trip) throw new Error('Valhalla: sin ruta');
+            const s = data.trip.summary;
+            // Unir shape de todos los tramos decodificando el polyline
+            const geometria = data.trip.legs.flatMap(leg => decodePoly6(leg.shape));
+            return {
+                distancia: s.length,
+                tiempo: Math.round(s.time / 60),
+                geometria
+            };
+        }
+
+        async function pedirOSRM(puntos) {
+            const coordStr = puntos.map(p => `${p.lon},${p.lat}`).join(';');
+            const res = await fetch(
+                `https://router.project-osrm.org/route/v1/driving/${coordStr}?overview=full&geometries=geojson`
+            );
+            if (!res.ok) throw new Error(`OSRM ${res.status}`);
+            const data = await res.json();
+            if (data.code !== 'Ok' || !data.routes.length) throw new Error('OSRM sin ruta');
+            const route = data.routes[0];
+            return {
+                distancia: route.distance / 1000,
+                tiempo: Math.round(route.duration / 60),
+                geometria: route.geometry.coordinates.map(c => [c[1], c[0]])
+            };
+        }
+
+        async function optimizarYMostrar() {
+            if (!miUbicacion || destinos.length === 0) return;
+
+            mostrarEstado('🔄 Calculando rutas por barrios...', 'info');
+            document.getElementById('btnOptimizar').disabled = true;
+
+            const rutaBase = [
+                { nombre: 'Tu Ubicación Actual', lat: miUbicacion.lat, lon: miUbicacion.lon },
+                ...destinos
+            ];
+            const rutaOrdenada = ordenarPorCercaniaTotal(rutaBase);
+            const puntosDestino = rutaOrdenada.slice(1);
+
+            // ── Equivalente a seleccionarVistaRuta con Google TravelMode ──────────────
+            // Cada perfil genera una ruta DISTINTA según el tipo de vía que puede usar:
+            //   'pedestrian' → como TravelMode.WALKING   — aceras, barrios, senderos
+            //   'bicycle'    → como TravelMode.BICYCLING — ciclovías, calles tranquilas
+            //   'motorcycle' → sin equivalente en Google  — calles vehiculares + atajos
+            //   OSRM driving → como TravelMode.DRIVING   — avenidas y carreteras
+            const [resPie, resBici, resMoto, resCarro] = await Promise.allSettled([
+                pedirValhalla('pedestrian', rutaOrdenada),   // TravelMode.WALKING
+                pedirValhalla('bicycle', rutaOrdenada),   // TravelMode.BICYCLING
+                pedirValhalla('motorcycle', rutaOrdenada),   // (exclusivo Valhalla)
+                pedirOSRM(rutaOrdenada)                      // TravelMode.DRIVING
+            ]);
+
+            window.rutasCalculadas = { foot: null, bike: null, moto: null, car: null };
+
+            if (resPie.status === 'fulfilled') window.rutasCalculadas.foot = { ...resPie.value, puntos: puntosDestino };
+            else console.warn('Pie:', resPie.reason);
+
+            if (resBici.status === 'fulfilled') window.rutasCalculadas.bike = { ...resBici.value, puntos: puntosDestino };
+            else console.warn('Bici:', resBici.reason);
+
+            if (resMoto.status === 'fulfilled') window.rutasCalculadas.moto = { ...resMoto.value, puntos: puntosDestino };
+            else console.warn('Moto:', resMoto.reason);
+
+            if (resCarro.status === 'fulfilled') window.rutasCalculadas.car = { ...resCarro.value, puntos: puntosDestino };
+            else console.warn('Carro:', resCarro.reason);
+
+            document.getElementById('btnOptimizar').disabled = false;
+
+            if (!Object.values(window.rutasCalculadas).some(v => v)) {
+                mostrarEstado('⚠️ No se pudo calcular ninguna ruta. Verifica tu conexión.', 'error');
+                return;
+            }
+
+            actualizarTarjetas();
+            document.getElementById('rutaResultado').classList.add('visible');
+            const primera = ['foot', 'bike', 'moto', 'car'].find(p => window.rutasCalculadas[p]);
+            seleccionarVistaRuta(primera);
+            mostrarEstado('🚀 ¡Rutas listas! Bici y pie van por calles de barrios.', 'success');
+            if (esMovil()) mostrarMapaMovil();
+        }
+
+        function actualizarTarjetas() {
+            const iconos = { foot: '🚶', bike: '🚲', moto: '🏍️', car: '🚗' };
+            ['foot', 'bike', 'moto', 'car'].forEach(p => {
+                const card = document.getElementById(`tab-${p}`);
+                const d = window.rutasCalculadas[p];
+                if (d) {
+                    const mins = d.tiempo;
+                    const t = mins >= 60 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : `${mins} min`;
+                    const barrio = p === 'foot' || p === 'bike'
+                        ? `<div style="font-size:9px;background:#e8f5e9;color:#1b5e20;padding:1px 5px;border-radius:8px;font-weight:700;margin-top:2px;">🏘️ Por barrios</div>`
+                        : '';
+                    card.innerHTML =
+                        `<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">` +
+                        `<span style="font-size:1.4rem;">${iconos[p]}</span>` +
+                        `<span style="font-size:11px;font-weight:700;color:#333;">${d.distancia.toFixed(1)} km</span>` +
+                        `<span style="font-size:10px;color:#666;">${t}</span>` +
+                        barrio + `</div>`;
+                } else {
+                    card.innerHTML =
+                        `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;opacity:0.4;">` +
+                        `<span style="font-size:1.4rem;">${iconos[p]}</span>` +
+                        `<span style="font-size:10px;color:#999;">No disp.</span></div>`;
+                }
+            });
+        }
+
+        function seleccionarVistaRuta(modo) {
+            vistaActual = modo;
+
+            // Determina el perfil de ruta y estilo visual según el modo seleccionado
+            // — estructura idéntica al switch(modo) con TravelMode que propusiste —
+            let perfilColor, perfilPeso, perfilGuion;
+            switch (modo) {
+                case 'foot':
+                    // Rutas solo peatonales: aceras, senderos, calles de barrio
+                    // → equivale a google.maps.TravelMode.WALKING
+                    perfilColor = '#8B1A2B';
+                    perfilPeso = 5;
+                    perfilGuion = '6,9';
+                    break;
+                case 'bike':
+                    // Rutas ciclables: ciclovías y calles de bajo tráfico
+                    // → equivale a google.maps.TravelMode.BICYCLING
+                    perfilColor = '#2e7d32';
+                    perfilPeso = 6;
+                    perfilGuion = null;
+                    break;
+                case 'moto':
+                    // Rutas en moto: calles vehiculares + atajos urbanos
+                    // → no existe en Google Maps básico, exclusivo de Valhalla
+                    perfilColor = '#e65100';
+                    perfilPeso = 5;
+                    perfilGuion = '10,5';
+                    break;
+                case 'car':
+                    // Rutas vehiculares: respeta sentidos de tráfico y avenidas
+                    // → equivale a google.maps.TravelMode.DRIVING
+                    perfilColor = '#1565c0';
+                    perfilPeso = 5;
+                    perfilGuion = null;
+                    break;
+            }
+
+            // Marcar tarjeta activa
+            document.querySelectorAll('.tab-card').forEach(c => c.classList.remove('active'));
+            document.getElementById(`tab-${modo}`).classList.add('active');
+
+            const datos = window.rutasCalculadas[modo];
+            if (!datos) return;
+
+            // Limpiar ruta anterior del mapa
+            if (rutaLinea) map.removeLayer(rutaLinea);
+            marcadoresPuntosMedios.forEach(m => map.removeLayer(m));
+            marcadoresPuntosMedios = [];
+
+            // Dibujar polyline con el estilo del modo seleccionado
+            rutaLinea = L.polyline(datos.geometria, {
+                color: perfilColor,
+                weight: perfilPeso,
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round',
+                dashArray: perfilGuion
+            }).addTo(map);
+
+            map.fitBounds(rutaLinea.getBounds(), { padding: [50, 50] });
+
+            // Actualizar lista de paradas con el color del modo activo
+            const listaOrdenada = document.getElementById('ordenVisita');
+            listaOrdenada.innerHTML = '<li class="inicio"><span class="numero">🏠</span><div><strong>Tu ubicación actual</strong><small>Punto de partida</small></div></li>';
+            datos.puntos.forEach((destino, index) => {
+                listaOrdenada.innerHTML += `<li style="background:${perfilColor}">
+                    <span class="numero">${index + 1}</span>
+                    <div><strong>${destino.nombre}</strong><small>${index === 0 ? '🔥 ¡Tu parada más cercana!' : 'Siguiente punto óptimo'}</small></div>
+                </li>`;
+            });
+        }
+
+        function ordenarPorCercaniaTotal(rutaOriginal) {
+            let resultado = [];
+            let copiaPuntos = [...rutaOriginal];
+            resultado.push(copiaPuntos.shift());
+
+            while (copiaPuntos.length > 0) {
+                let ultimoPunto = resultado[resultado.length - 1];
+                let indiceMasCercano = 0;
+                let distanciaMinima = Infinity;
+
+                for (let i = 0; i < copiaPuntos.length; i++) {
+                    let dist = haversine(ultimoPunto.lat, ultimoPunto.lon, copiaPuntos[i].lat, copiaPuntos[i].lon);
+                    if (dist < distanciaMinima) {
+                        distanciaMinima = dist;
+                        indiceMasCercano = i;
+                    }
+                }
+                resultado.push(copiaPuntos.splice(indiceMasCercano, 1)[0]);
+            }
+            return resultado;
+        }
+
+        function haversine(lat1, lon1, lat2, lon2) {
+            const R = 6371;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        function mostrarEstado(msg, tipo) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = msg;
+            el.className = `status ${tipo}`;
+        }
+
+        function limpiarTodo() {
+            destinos = [];
+            tempSeleccion = null;
+            window.rutasCalculadas = { foot: null, bike: null, car: null };
+            marcadoresMapa.forEach(m => map.removeLayer(m));
+            marcadoresMapa = [];
+            if (window.tempMarker) { map.removeLayer(window.tempMarker); window.tempMarker = null; }
+            removerRutaGrafica();
+            renderLista();
+            document.getElementById('inputLugar').value = '';
+            document.getElementById('btnAgregar').disabled = true;
+            document.body.classList.remove('ver-mapa');
+            obtenerUbicacionActual();
+        }
+
+        document.getElementById('inputLugar').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') buscarLugar();
+        });
+
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then((reg) => console.log('Service worker registrado:', reg.scope))
+                    .catch((err) => console.warn('No se pudo registrar el service worker:', err));
+            });
+        }
+    </script>
+</body>
+
+</html>
